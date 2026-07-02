@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הבורד היומי שלי</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --ink: #1f2430;
+    --muted: #7a8194;
+    --line: #e7e9ef;
+    --today: #eef4ff;
+    --today-ink: #2563eb;
+    --prog: #fff7e8;
+    --prog-ink: #c2740a;
+    --done: #eefaf1;
+    --done-ink: #16a34a;
+    --shadow: 0 1px 2px rgba(20,25,40,.06), 0 4px 12px rgba(20,25,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans Hebrew", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 18px 60px; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: -.2px; }
+  .datebar { display: flex; align-items: center; gap: 8px; }
+  .datebar .navbtn {
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    width: 34px; height: 34px; border-radius: 9px; cursor: pointer; font-size: 17px;
+    display: grid; place-items: center; box-shadow: var(--shadow);
+  }
+  .datebar .navbtn:hover { background: #f1f3f8; }
+  .datelabel { min-width: 190px; text-align: center; font-weight: 600; font-size: 15px; }
+  .datelabel small { display: block; color: var(--muted); font-weight: 500; font-size: 12px; }
+  .todaybtn {
+    border: 1px solid var(--line); background: var(--card); color: var(--today-ink);
+    padding: 7px 12px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 600; box-shadow: var(--shadow);
+  }
+  .todaybtn:hover { background: var(--today); }
+
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 14px 0 4px; }
+  .addbox { display: flex; flex: 1; min-width: 240px; gap: 8px; }
+  .addbox input {
+    flex: 1; border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+    padding: 11px 13px; font-size: 15px; color: var(--ink); box-shadow: var(--shadow); outline: none;
+  }
+  .addbox input:focus { border-color: #b9ccf5; }
+  .addbtn {
+    border: none; background: var(--today-ink); color: #fff; border-radius: 10px; padding: 0 18px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .addbtn:hover { filter: brightness(.95); }
+  .carrybtn {
+    border: 1px dashed #c9d6f0; background: var(--today); color: var(--today-ink);
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .carrybtn:hover { background: #e3edff; }
+  .carrybtn:disabled { opacity: .45; cursor: default; }
+
+  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+
+  .col {
+    background: #f0f2f6; border: 1px solid var(--line); border-radius: 14px; padding: 12px 12px 16px;
+    min-height: 140px; transition: background .12s, box-shadow .12s;
+  }
+  .col.drop { background: #e6ecfb; box-shadow: inset 0 0 0 2px #b9ccf5; }
+  .colhead { display: flex; align-items: center; justify-content: space-between; margin: 2px 4px 12px; }
+  .coltitle { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .col[data-status="today"] .dot { background: var(--today-ink); }
+  .col[data-status="progress"] .dot { background: var(--prog-ink); }
+  .col[data-status="done"] .dot { background: var(--done-ink); }
+  .count { background: #fff; border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 600; border-radius: 20px; padding: 1px 9px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 11px 12px;
+    margin-bottom: 9px; box-shadow: var(--shadow); cursor: grab; position: relative;
+  }
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: .4; }
+  .card .txt { font-size: 14.5px; line-height: 1.4; word-break: break-word; white-space: pre-wrap; }
+  .card.done-card .txt { text-decoration: line-through; color: var(--muted); }
+  .card .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .card .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; }
+  .movebtns { display: flex; gap: 5px; }
+  .mbtn {
+    border: 1px solid var(--line); background: #fbfcfe; color: var(--ink); border-radius: 7px;
+    padding: 4px 9px; font-size: 12px; cursor: pointer; font-weight: 600;
+  }
+  .mbtn:hover { background: #eef1f7; }
+  .mbtn.done { color: var(--done-ink); }
+  .mbtn.back { color: var(--muted); }
+  .del { border: none; background: transparent; color: #c2c7d2; cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 4px; }
+  .del:hover { color: #e0554f; }
+  .empty { color: #aab0be; font-size: 13px; text-align: center; padding: 22px 8px; border: 1px dashed #d6dae3; border-radius: 10px; }
+
+  .footer { margin-top: 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 12px; }
+  .clearbtn { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 8px; padding: 6px 11px; font-size: 12px; cursor: pointer; }
+  .clearbtn:hover { color: #e0554f; border-color: #f0c9c7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>📋 הבורד היומי שלי</h1>
+    <div class="datebar">
+      <button class="navbtn" id="prevDay" title="יום קודם">›</button>
+      <div class="datelabel" id="dateLabel"></div>
+      <button class="navbtn" id="nextDay" title="יום הבא">‹</button>
+      <button class="todaybtn" id="goToday">היום</button>
+    </div>
+  </header>
+
+  <div class="actions">
+    <div class="addbox">
+      <input id="taskInput" type="text" placeholder="מה צריך לעשות היום? הקלד ולחץ Enter…" autocomplete="off">
+      <button class="addbtn" id="addBtn">הוסף</button>
+    </div>
+    <button class="carrybtn" id="carryBtn">↩︎ משוך משימות פתוחות מאתמול</button>
+  </div>
+
+  <div class="cols" id="cols">
+    <div class="col" data-status="today">
+      <div class="colhead"><span class="coltitle"><span class="dot"></span>משימות להיום</span><span class="count" id="c-today">0</span></div>
+      <div class="list" id="list-today"></div>
+    </div>
+    <div class="col" data-status="progress">
+      <div class="colhead"><span class="coltitle"><span class="dot"></span>בעבודה</span><span class="count" id="c-progress">0</span></div>
+      <div class="list" id="list-progress"></div>
+    </div>
+    <div class="col" data-status="done">
+      <div class="colhead"><span class="coltitle"><span class="dot"></span>הושלם</span><span class="count" id="c-done">0</span></div>
+      <div class="list" id="list-done"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span id="summary"></span>
+    <button class="clearbtn" id="clearDone">נקה משימות שהושלמו מהיום הזה</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "daily_board_tasks_v1";
+  var STATUSES = ["today", "progress", "done"];
+  var LABELS = { today: "משימות להיום", progress: "בעבודה", done: "הושלם" };
+
+  // ---- date helpers ----
+  function ymd(d) {
+    var y = d.getFullYear(), m = ("0" + (d.getMonth() + 1)).slice(-2), day = ("0" + d.getDate()).slice(-2);
+    return y + "-" + m + "-" + day;
+  }
+  function parseYmd(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(s, n) { var d = parseYmd(s); d.setDate(d.getDate() + n); return ymd(d); }
+  var todayStr = ymd(new Date());
+  var viewDay = todayStr;
+
+  var DOW = ["יום ראשון", "יום שני", "יום שלישי", "יום רביעי", "יום חמישי", "יום שישי", "שבת"];
+  var MON = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+  function prettyDate(s) {
+    var d = parseYmd(s);
+    var rel = "";
+    if (s === todayStr) rel = "היום";
+    else if (s === addDays(todayStr, -1)) rel = "אתמול";
+    else if (s === addDays(todayStr, 1)) rel = "מחר";
+    var main = DOW[d.getDay()] + ", " + d.getDate() + " ב" + MON[d.getMonth()];
+    return { main: main, rel: rel };
+  }
+
+  // ---- storage ----
+  function load() {
+    try { var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : []; }
+    catch (e) { return []; }
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch (e) {} }
+  var tasks = load();
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function addTask(text) {
+    text = (text || "").trim();
+    if (!text) return;
+    tasks.push({ id: uid(), text: text, status: "today", day: viewDay, created: Date.now() });
+    save(); render();
+  }
+  function moveTask(id, status) {
+    for (var i = 0; i < tasks.length; i++) if (tasks[i].id === id) {
+      tasks[i].status = status;
+      if (status === "done") tasks[i].doneAt = Date.now(); else delete tasks[i].doneAt;
+      break;
+    }
+    save(); render();
+  }
+  function delTask(id) { tasks = tasks.filter(function (t) { return t.id !== id; }); save(); render(); }
+
+  // pull unfinished (today+progress) tasks from ALL earlier days into the viewed day
+  function carryOver() {
+    var moved = 0;
+    tasks.forEach(function (t) {
+      if (t.status !== "done" && t.day < viewDay) { t.day = viewDay; moved++; }
+    });
+    if (moved) { save(); render(); }
+    return moved;
+  }
+  function hasOpenBefore() {
+    return tasks.some(function (t) { return t.status !== "done" && t.day < viewDay; });
+  }
+
+  // ---- rendering ----
+  var listEls = {}, countEls = {};
+  STATUSES.forEach(function (s) { listEls[s] = document.getElementById("list-" + s); countEls[s] = document.getElementById("c-" + s); });
+
+  function escapeHtml(s) { return s.replace(/[&<>"]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  function cardHtml(t) {
+    var forward = t.status === "today" ? "בעבודה →" : (t.status === "progress" ? "הושלם ✓" : "");
+    var forwardStatus = t.status === "today" ? "progress" : "done";
+    var backStatus = t.status === "done" ? "progress" : "today";
+    var showBack = t.status !== "today";
+    var buttons = "";
+    if (t.status !== "done") buttons += '<button class="mbtn done" data-move="' + forwardStatus + '" data-id="' + t.id + '">' + forward + '</button>';
+    if (showBack) buttons += '<button class="mbtn back" data-move="' + backStatus + '" data-id="' + t.id + '">↩︎</button>';
+    return '<div class="card' + (t.status === "done" ? " done-card" : "") + '" draggable="true" data-id="' + t.id + '">' +
+             '<div class="txt">' + escapeHtml(t.text) + '</div>' +
+             '<div class="row"><span class="movebtns">' + buttons + '</span>' +
+             '<button class="del" data-del="' + t.id + '" title="מחק">✕</button></div>' +
+           '</div>';
+  }
+
+  function render() {
+    var byStatus = { today: [], progress: [], done: [] };
+    tasks.forEach(function (t) { if (t.day === viewDay) byStatus[t.status].push(t); });
+
+    STATUSES.forEach(function (s) {
+      var arr = byStatus[s];
+      countEls[s].textContent = arr.length;
+      if (!arr.length) {
+        listEls[s].innerHTML = '<div class="empty">' + (s === "today" ? "אין משימות — הוסף אחת למעלה" : (s === "progress" ? "כלום לא בעבודה כרגע" : "עדיין לא הושלם כלום")) + '</div>';
+      } else {
+        arr.sort(function (a, b) { return a.created - b.created; });
+        listEls[s].innerHTML = arr.map(cardHtml).join("");
+      }
+    });
+
+    var pd = prettyDate(viewDay);
+    document.getElementById("dateLabel").innerHTML = pd.main + (pd.rel ? '<small>' + pd.rel + '</small>' : '<small>&nbsp;</small>');
+
+    var open = byStatus.today.length + byStatus.progress.length;
+    var done = byStatus.done.length;
+    document.getElementById("summary").textContent = open + " פתוחות · " + done + " הושלמו · סה״כ " + (open + done) + " ביום זה";
+
+    var carry = document.getElementById("carryBtn");
+    carry.disabled = !hasOpenBefore();
+  }
+
+  // ---- events ----
+  document.getElementById("addBtn").addEventListener("click", function () {
+    var inp = document.getElementById("taskInput"); addTask(inp.value); inp.value = ""; inp.focus();
+  });
+  document.getElementById("taskInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { addTask(this.value); this.value = ""; }
+  });
+  document.getElementById("prevDay").addEventListener("click", function () { viewDay = addDays(viewDay, -1); render(); });
+  document.getElementById("nextDay").addEventListener("click", function () { viewDay = addDays(viewDay, 1); render(); });
+  document.getElementById("goToday").addEventListener("click", function () { viewDay = todayStr; render(); });
+  document.getElementById("carryBtn").addEventListener("click", function () {
+    var n = carryOver();
+    if (!n) return;
+  });
+  document.getElementById("clearDone").addEventListener("click", function () {
+    var n = tasks.filter(function (t) { return t.day === viewDay && t.status === "done"; }).length;
+    if (!n) return;
+    if (confirm("למחוק " + n + " משימות שהושלמו ביום זה?")) {
+      tasks = tasks.filter(function (t) { return !(t.day === viewDay && t.status === "done"); });
+      save(); render();
+    }
+  });
+
+  // delegated clicks for move / delete
+  document.getElementById("cols").addEventListener("click", function (e) {
+    var mv = e.target.getAttribute("data-move");
+    if (mv) { moveTask(e.target.getAttribute("data-id"), mv); return; }
+    var del = e.target.getAttribute("data-del");
+    if (del) { delTask(del); return; }
+  });
+
+  // ---- drag & drop ----
+  var draggingId = null;
+  document.getElementById("cols").addEventListener("dragstart", function (e) {
+    var card = e.target.closest(".card");
+    if (!card) return;
+    draggingId = card.getAttribute("data-id");
+    card.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+  });
+  document.getElementById("cols").addEventListener("dragend", function (e) {
+    var card = e.target.closest(".card"); if (card) card.classList.remove("dragging");
+    draggingId = null;
+    document.querySelectorAll(".col.drop").forEach(function (c) { c.classList.remove("drop"); });
+  });
+  document.querySelectorAll(".col").forEach(function (col) {
+    col.addEventListener("dragover", function (e) { e.preventDefault(); col.classList.add("drop"); });
+    col.addEventListener("dragleave", function (e) { if (!col.contains(e.relatedTarget)) col.classList.remove("drop"); });
+    col.addEventListener("drop", function (e) {
+      e.preventDefault(); col.classList.remove("drop");
+      if (draggingId) moveTask(draggingId, col.getAttribute("data-status"));
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
